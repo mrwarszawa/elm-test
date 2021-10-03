@@ -19,4 +19,4 @@ jobs:
           ls ${{ github.workspace }}
       - run: echo "🍏 This job's status is ${{ job.status }}."
       - run: echo "Run elm"
-      - run: elm make src/Main.elm
+      - run: elm make Main.elm
