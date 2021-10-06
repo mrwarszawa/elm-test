@@ -20,3 +20,7 @@ jobs:
       - run: echo "🍏 This job's status is ${{ job.status }}."
       - run: echo "Run elm"
       - run: elm make Main.elm --output=docs/index.html
+      - run: git config --global user.name 'MR AUTO'
+      - run: git config --global user.email 'mariusz.rak.warszawa@gmail.com'
+      - run: git commit -am "Automated github action"
+      - run: git push
