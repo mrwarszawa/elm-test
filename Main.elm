@@ -1,26 +1,113 @@
-module Main exposing (main)
+module Main exposing (..)
 
 
-
--- Show an analog clock for your time zone.
---
--- Dependencies:
---   elm install elm/svg
---   elm install elm/time
---
--- For a simpler version, check out:
---   https://elm-lang.org/examples/time
---
-
+  
 import Browser
-import Html exposing (Html)
-import Svg exposing (..)
-import Svg.Attributes exposing (..)
+import Html exposing (Html, text)
 import Task
 import Time
+import Json.Encode as Encode
+import Json.Decode as Decode exposing (Decoder, field, maybe, int, string)
+import Http exposing (Error)
+import GraphQl exposing (Operation, Variables, Query, Named)
+import GraphQl.Http
 
 
 
+type Msg
+  = Start | GraphQlMsg (Result Error NameAndAddress)
+
+type alias User =
+  { id : Maybe Int
+  , name : Maybe Name
+  }
+
+type alias Name =
+  { firstName : Maybe String
+  , lastName : Maybe String
+  }
+
+type alias Address =
+  { street : Maybe String
+  , town : Maybe String
+  }
+
+type alias NameAndAddress =
+  { user : User
+  , address : Address
+  }
+
+decodeName : Decoder Name
+decodeName =
+  Decode.map2 Name
+    (maybe (field "first_name" string))
+    (maybe (field "last_name" string))
+
+decodeUser : Decoder User
+decodeUser =
+  Decode.map2 User
+    (maybe (field "id" int))
+    (maybe (field "name" decodeName))
+
+decodeAddress : Decoder Address
+decodeAddress =
+  Decode.map2 Address
+    (maybe (field "street" string))
+    (maybe (field "town" string))
+
+decodeNameAndAddress : Decoder NameAndAddress
+decodeNameAndAddress =
+  Decode.map2 NameAndAddress
+    (field "user" decodeUser)
+    (field "address" decodeAddress)
+
+
+userRequest : Operation Query Variables
+userRequest =
+  GraphQl.named "MySuperQuery"
+    [ GraphQl.field "user"
+      |> GraphQl.withArgument "id" (GraphQl.variable "id")
+      |> GraphQl.withAlias "current_user"
+      |> GraphQl.withSelectors
+        [ GraphQl.field "id"
+        , GraphQl.field "name"
+          |> GraphQl.withSelectors
+            [ GraphQl.field "first_name"
+            , GraphQl.field "last_name"
+            ]
+        ]
+    , GraphQl.field "address"
+      |> GraphQl.withArgument "city" (GraphQl.string "Paris")
+      |> GraphQl.withArgument "id" (GraphQl.int 12)
+      |> GraphQl.withArgument "type" (GraphQl.type_ "LOFT")
+      |> GraphQl.withSelectors
+        [ GraphQl.field "street"
+        , GraphQl.field "town"
+        ]
+    ]
+    |> GraphQl.withVariables [ ("id", "123") ]
+
+graphQlRequestOptions : GraphQl.Http.Options
+graphQlRequestOptions =
+  { url = "https://example.com"
+  , headers = []
+  }
+
+sendRequest : Int -> Cmd Msg
+sendRequest id =
+  GraphQl.query userRequest
+  |> GraphQl.addVariables [ ("id", Encode.int id) ]
+  |> GraphQl.Http.send graphQlRequestOptions GraphQlMsg decodeNameAndAddress
+  
+  
+  
+  
+  
+  
+  
+  
+  
+ 
 -- MAIN
 
 
@@ -38,91 +125,24 @@ main =
 
 
 type alias Model =
-  { zone : Time.Zone
-  , time : Time.Posix
+  { v : Int
   }
 
 
 init : () -> (Model, Cmd Msg)
-init _ =
-  ( Model Time.utc (Time.millisToPosix 0)
-  , Cmd.batch
-      [ Task.perform AdjustTimeZone Time.here
-      , Task.perform Tick Time.now
-      ]
-  )
+init _ = ( Model 1, sendRequest 1)
 
 
 
 -- UPDATE
-
-
-type Msg
-  = Tick Time.Posix
-  | AdjustTimeZone Time.Zone
-
-
-
 update : Msg -> Model -> (Model, Cmd Msg)
-update msg model =
-  case msg of
-    Tick newTime ->
-      ( { model | time = newTime }
-      , Cmd.none
-      )
-
-    AdjustTimeZone newZone ->
-      ( { model | zone = newZone }
-      , Cmd.none
-      )
-
-
-
--- SUBSCRIPTIONS
+update msg model = ( model, Cmd.none)
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  Time.every 1000 Tick
-
-
+  Sub.none
 
 -- VIEW
-
-
 view : Model -> Html Msg
-view model =
-  let
-    hour   = toFloat (Time.toHour   model.zone model.time)
-    minute = toFloat (Time.toMinute model.zone model.time)
-    second = toFloat (Time.toSecond model.zone model.time)
-  in
-  svg
-    [ viewBox "0 0 400 400"
-    , width "400"
-    , height "400"
-    ]
-    [ circle [ cx "200", cy "200", r "120", fill "#1293D8" ] []
-    , viewHand 6 60 (hour/12)
-    , viewHand 6 90 (minute/60)
-    , viewHand 3 90 (second/60)
-    ]
-
-
-viewHand : Int -> Float -> Float -> Svg msg
-viewHand width length turns =
-  let
-    t = 2 * pi * (turns - 0.25)
-    x = 200 + length * cos t
-    y = 200 + length * sin t
-  in
-  line
-    [ x1 "200"
-    , y1 "200"
-    , x2 (String.fromFloat x)
-    , y2 (String.fromFloat y)
-    , stroke "white"
-    , strokeWidth (String.fromInt width)
-    , strokeLinecap "round"
-    ]
-    []
+view model =  text "Hello"
