@@ -145,4 +145,4 @@ subscriptions model =
 
 -- VIEW
 view : Model -> Html Msg
-view model =  text "Hello"
+view model =  text "Hello guys"
